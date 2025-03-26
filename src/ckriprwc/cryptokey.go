@@ -30,6 +30,7 @@ type cryptokey struct {
 type route struct {
 	Prefix      netip.Prefix
 	destination ed25519.PublicKey
+	Metric      int
 }
 
 // Configure the CKR routes. This should only ever be ran by the TUN/TAP actor.
@@ -126,6 +127,7 @@ func (c *cryptokey) addRemoteSubnet(cidr string, dest string) error {
 			c.v6Routes = append(c.v6Routes, &route{
 				Prefix:      prefix,
 				destination: destination,
+				Metric:      1000,
 			})
 			sort.Slice(c.v6Routes, func(i, j int) bool {
 				return c.v6Routes[i].Prefix.Bits() > c.v6Routes[j].Prefix.Bits()
@@ -136,6 +138,7 @@ func (c *cryptokey) addRemoteSubnet(cidr string, dest string) error {
 			c.v4Routes = append(c.v4Routes, &route{
 				Prefix:      prefix,
 				destination: destination,
+				Metric:      1000,
 			})
 			sort.Slice(c.v4Routes, func(i, j int) bool {
 				return c.v4Routes[i].Prefix.Bits() > c.v4Routes[j].Prefix.Bits()
