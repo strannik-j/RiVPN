@@ -83,6 +83,24 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 	tun.log.Infof("Interface name: %s", tun.Name())
 	tun.log.Infof("Interface IPv6: %s", addr)
 	tun.log.Infof("Interface MTU: %d", tun.mtu)
+	
+	    defaultRouteV4 := &netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)},
+		Priority:  1000,
+	    }
+	    if err := netlink.RouteAdd(defaultRouteV4); err != nil {
+		tun.log.Warnf("Failed to add default IPv4 route: %v", err)
+	    }
+	
+	    defaultRouteV6 := &netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       &net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)},
+		Priority:  1000,
+	    }
+	    if err := netlink.RouteAdd(defaultRouteV6); err != nil {
+		tun.log.Warnf("Failed to add default IPv6 route: %v", err)
+	    }
 	return nil
 }
 
@@ -94,6 +112,7 @@ func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 32),
 			},
+			Priority: r.Metric,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err
@@ -110,6 +129,7 @@ func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 128),
 			},
+			Priority: r.Metric,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err
