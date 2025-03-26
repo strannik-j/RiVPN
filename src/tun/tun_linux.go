@@ -14,6 +14,14 @@ import (
 
 // Configures the TUN adapter with the correct IPv6 address and MTU.
 func (tun *TunAdapter) setup(ifname string, addr string, mtu uint64) error {
+	nladdr, err := netlink.ParseAddr(addr)
+	if err != nil {
+	return err
+	}
+	nlintf, err := netlink.LinkByName(tun.Name())
+	if err != nil {
+	return err
+	}
 	if ifname == "auto" {
 		ifname = "\000"
 	}
@@ -107,7 +115,7 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 	for _, r := range tun.rwc.V4Routes() {
 		route := &netlink.Route{
-			LinkIndex: link.Attrs().Index,
+			LinkIndex: nlintf.Attrs().Index,
 			Dst: &net.IPNet{
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 32),
@@ -124,7 +132,7 @@ func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
 	for _, r := range tun.rwc.V6Routes() {
 		route := &netlink.Route{
-			LinkIndex: link.Attrs().Index,
+			LinkIndex: nlintf.Attrs().Index,
 			Dst: &net.IPNet{
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 128),
