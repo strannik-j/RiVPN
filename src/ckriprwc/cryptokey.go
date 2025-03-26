@@ -40,6 +40,13 @@ func (c *cryptokey) configure() error {
 		return nil
 	}
 
+	if c.config.IPv4Metric == 0 {
+		c.config.IPv4Metric = 0 // default
+	}
+	if c.config.IPv6Metric == 0 {
+		c.config.IPv6Metric = 0 // default
+	}
+
 	c.Lock()
 	c.v4Routes = make([]*route, 0, len(c.config.IPv4RemoteSubnets))
 	c.v6Routes = make([]*route, 0, len(c.config.IPv6RemoteSubnets))
@@ -189,4 +196,12 @@ func (c *cryptokey) isMeshDestination(ip netip.Addr) bool {
 	copy(addr[:], ip.AsSlice())
 	copy(snet[:], ip.AsSlice())
 	return c.core.IsValidAddress(addr) || c.core.IsValidSubnet(snet)
+}
+
+func (c *cryptokey) GetIPv4Metric() int {
+	return c.config.IPv4Metric
+}
+
+func (c *cryptokey) GetIPv6Metric() int {
+	return c.config.IPv6Metric
 }

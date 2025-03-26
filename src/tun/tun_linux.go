@@ -87,6 +87,7 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 }
 
 func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
+	metric := tun.rwc.GetIPv4Metric()
 	for _, r := range tun.rwc.V4Routes() {
 		route := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
@@ -94,6 +95,7 @@ func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 32),
 			},
+			Priority:  metric,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err
@@ -103,6 +105,7 @@ func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 }
 
 func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
+	metric := tun.rwc.GetIPv6Metric()
 	for _, r := range tun.rwc.V6Routes() {
 		route := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
@@ -110,6 +113,7 @@ func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 128),
 			},
+			Priority:  metric,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err

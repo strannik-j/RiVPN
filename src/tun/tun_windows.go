@@ -162,6 +162,7 @@ func (tun *TunAdapter) setupIPv4Address(addr string) error {
 }
 
 func (tun *TunAdapter) setupV4Routes() error {
+	metric := uint32(tun.rwc.GetIPv4Metric())
 	if intf, ok := tun.iface.(*wgtun.NativeTun); ok {
 		luid := winipcfg.LUID(intf.LUID())
 		for _, r := range tun.rwc.V4Routes() {
@@ -170,7 +171,7 @@ func (tun *TunAdapter) setupV4Routes() error {
 				return errors.New("invalid tun address TUN")
 			}
 			tun.log.Infoln("Added nexthop address:", ip.String())
-			luid.AddRoute(r.Prefix, ip, 1)
+			luid.AddRoute(r.Prefix, ip, metric)
 		}
 	} else {
 		return errors.New("unable to get native TUN")
@@ -179,6 +180,7 @@ func (tun *TunAdapter) setupV4Routes() error {
 }
 
 func (tun *TunAdapter) setupV6Routes() error {
+	metric := uint32(tun.rwc.GetIPv6Metric())
 	if intf, ok := tun.iface.(*wgtun.NativeTun); ok {
 		luid := winipcfg.LUID(intf.LUID())
 		for _, r := range tun.rwc.V6Routes() {
@@ -187,7 +189,7 @@ func (tun *TunAdapter) setupV6Routes() error {
 				return errors.New("invalid tun address TUN")
 			}
 			tun.log.Infoln("Added nexthop address:", ip.String())
-			luid.AddRoute(r.Prefix, ip, 1)
+			luid.AddRoute(r.Prefix, ip, metric)
 		}
 	} else {
 		return errors.New("unable to get native TUN")

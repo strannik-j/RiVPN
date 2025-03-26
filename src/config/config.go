@@ -8,6 +8,8 @@ type NodeConfig struct {
 // IPv4 or IPv6 subnets across the RiV-mesh network.
 type TunnelRoutingConfig struct {
 	Enable            bool              `comment:"Enable or disable tunnel routing."`
+	IPv4Metric        int               `comment:"Metric for IPv4 tunnel routes"`
+	IPv6Metric        int               `comment:"Metric for IPv6 tunnel routes"`
 	IPv6RemoteSubnets map[string]string `comment:"IPv6 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"aaaa:bbbb:cccc::/e\": \"boxpubkey\", ... }"`
 	IPv4RemoteSubnets map[string]string `comment:"IPv4 subnets belonging to remote nodes, mapped to the node's public\nkey, e.g. { \"a.b.c.d/e\": \"boxpubkey\", ... }"`
 }
