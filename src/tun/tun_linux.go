@@ -4,6 +4,7 @@
 package tun
 
 import (
+    "fmt"
     "net"
 
     "github.com/vishvananda/netlink"
@@ -12,24 +13,31 @@ import (
 
 // Configures the TUN adapter with the correct IPv6 address and MTU.
 func (tun *TunAdapter) setup(ifname string, addr string, mtu uint64) error {
+    // Remove existing interface if it exists
+    existingLink, _ := netlink.LinkByName(ifname)
+    if existingLink != nil {
+        netlink.LinkDel(existingLink)
+    }
+
     if ifname == "auto" {
         ifname = "\000"
     }
     iface, err := wgtun.CreateTUN(ifname, int(mtu))
     if err != nil {
-        panic(err)
+        return fmt.Errorf("failed to create TUN: %w", err)
     }
     tun.iface = iface
+
     if mtu, err := iface.MTU(); err == nil {
         tun.mtu = getSupportedMTU(uint64(mtu))
     } else {
         tun.mtu = 0
     }
+
     if err := tun.setupAddress(addr); err != nil {
         return err
     }
 
-    // Setup routes
     if err := tun.setupV4Routes(); err != nil {
         return err
     }
@@ -39,7 +47,6 @@ func (tun *TunAdapter) setup(ifname string, addr string, mtu uint64) error {
     return nil
 }
 
-// Configures the TUN adapter with the correct IPv6 address and MTU.
 func (tun *TunAdapter) setupAddress(addr string) error {
     nlintf, err := netlink.LinkByName(tun.Name())
     if err != nil {
@@ -117,7 +124,7 @@ func (tun *TunAdapter) setupV4Routes() error {
             Priority: r.Metric,
         }
         if err := netlink.RouteAdd(route); err != nil {
-            return err
+            return fmt.Errorf("failed to add IPv4 route %s: %w", r.Prefix, err)
         }
     }
     return nil
@@ -139,8 +146,20 @@ func (tun *TunAdapter) setupV6Routes() error {
             Priority: r.Metric,
         }
         if err := netlink.RouteAdd(route); err != nil {
-            return err
+            return fmt.Errorf("failed to add IPv6 route %s: %w", r.Prefix, err)
         }
+    }
+    return nil
+}
+
+func (tun *TunAdapter) _stop() error {
+    tun.isOpen = false
+    if tun.iface != nil {
+        link, _ := netlink.LinkByName(tun.Name())
+        if link != nil {
+            netlink.LinkDel(link) // Clean up the interface
+        }
+        tun.iface.Close()
     }
     return nil
 }
