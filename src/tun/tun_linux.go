@@ -94,6 +94,7 @@ func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 32),
 			},
+			Priority: 1000,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err
@@ -110,6 +111,7 @@ func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
 				IP:   net.IP(r.Prefix.Addr().AsSlice()),
 				Mask: net.CIDRMask(r.Prefix.Masked().Bits(), 128),
 			},
+			Priority: 1000,
 		}
 		if err := netlink.RouteAdd(route); err != nil {
 			return err
