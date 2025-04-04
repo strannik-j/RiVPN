@@ -31,3 +31,7 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 	tun.log.Warnln("Warning: Platform not supported, you must set the address of", tun.Name(), "to", addr)
 	return nil
 }
+func (tun *TunAdapter) setupV4Routes() error {
+	tun.log.Warnln("Route metrics are not supported on this platform.")
+	return nil
+}

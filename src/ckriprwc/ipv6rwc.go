@@ -399,3 +399,11 @@ func (rwc *ReadWriteCloser) Close() error {
 	rwc.core.Stop()
 	return err
 }
+
+func (rwc *ReadWriteCloser) GetIPv4Metric() int {
+	return rwc.ckr.GetIPv4Metric()
+}
+
+func (rwc *ReadWriteCloser) GetIPv6Metric() int {
+	return rwc.ckr.GetIPv6Metric()
+}

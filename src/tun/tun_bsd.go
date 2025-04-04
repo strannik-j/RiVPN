@@ -154,3 +154,32 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 
 	return nil
 }
+
+func (tun *TunAdapter) setupV4Routes() error {
+	metric := tun.rwc.GetIPv4Metric()
+	for _, r := range tun.rwc.V4Routes() {
+		cmd := exec.Command(
+		"route", "add", r.Prefix.String(),
+		"-interface", tun.Name(), "-priority", strconv.Itoa(metric),
+		)
+        if output, err := cmd.CombinedOutput(); err != nil {
+		tun.log.Errorf("Failed to add IPv4 route: %v, output: %s", err, string(output))
+		}
+	}
+    return nil
+}
+
+
+func (tun *TunAdapter) setupV6Routes() error {
+	metric := tun.rwc.GetIPv6Metric()
+	for _, r := range tun.rwc.V4Routes() {
+		cmd := exec.Command(
+		"route", "add", r.Prefix.String(),
+		"-interface", tun.Name(), "-priority", strconv.Itoa(metric),
+		)
+        if output, err := cmd.CombinedOutput(); err != nil {
+		tun.log.Errorf("Failed to add IPv4 route: %v, output: %s", err, string(output))
+		}
+	}
+    return nil
+}

@@ -36,37 +36,37 @@ func (tun *TunAdapter) setup(ifname string, addr string, mtu uint64) error {
 }
 
 const (
-	darwin_SIOCAIFADDR_IN6       = 2155899162 // netinet6/in6_var.h
-	darwin_IN6_IFF_NODAD         = 0x0020     // netinet6/in6_var.h
-	darwin_IN6_IFF_SECURED       = 0x0400     // netinet6/in6_var.h
+	darwin_SIOCAIFADDR_IN6	   = 2155899162 // netinet6/in6_var.h
+	darwin_IN6_IFF_NODAD		 = 0x0020	 // netinet6/in6_var.h
+	darwin_IN6_IFF_SECURED	   = 0x0400	 // netinet6/in6_var.h
 	darwin_ND6_INFINITE_LIFETIME = 0xFFFFFFFF // netinet6/nd6.h
 )
 
 // nolint:structcheck
 type in6_addrlifetime struct {
-	ia6t_expire    float64 // nolint:unused
+	ia6t_expire	float64 // nolint:unused
 	ia6t_preferred float64 // nolint:unused
-	ia6t_vltime    uint32
-	ia6t_pltime    uint32
+	ia6t_vltime	uint32
+	ia6t_pltime	uint32
 }
 
 // nolint:structcheck
 type sockaddr_in6 struct {
-	sin6_len      uint8
+	sin6_len	  uint8
 	sin6_family   uint8
-	sin6_port     uint8  // nolint:unused
+	sin6_port	 uint8  // nolint:unused
 	sin6_flowinfo uint32 // nolint:unused
-	sin6_addr     [8]uint16
+	sin6_addr	 [8]uint16
 	sin6_scope_id uint32 // nolint:unused
 }
 
 // nolint:structcheck
 type in6_aliasreq struct {
-	ifra_name       [16]byte
-	ifra_addr       sockaddr_in6
-	ifra_dstaddr    sockaddr_in6 // nolint:unused
+	ifra_name	   [16]byte
+	ifra_addr	   sockaddr_in6
+	ifra_dstaddr	sockaddr_in6 // nolint:unused
 	ifra_prefixmask sockaddr_in6
-	ifra_flags      uint32
+	ifra_flags	  uint32
 	ifra_lifetime   in6_addrlifetime
 }
 
@@ -77,10 +77,10 @@ type ifreq struct {
 
 // struct ifalias_req
 type aliasreq struct {
-	ifra_name    [unix.IFNAMSIZ]byte
-	ifra_addr    unix.RawSockaddrInet4
+	ifra_name	[unix.IFNAMSIZ]byte
+	ifra_addr	unix.RawSockaddrInet4
 	ifra_dstaddr unix.RawSockaddrInet4 // nolint:unused
-	ifra_mask    unix.RawSockaddrInet4
+	ifra_mask	unix.RawSockaddrInet4
 }
 
 // Implementation: Adds an IPv4 address to an interface.
@@ -105,17 +105,17 @@ func addressAdd4(intf_name string, ipv4 []byte) error {
 	ifra4 := aliasreq{
 		ifra_name: ifra_name,
 		ifra_addr: unix.RawSockaddrInet4{
-			Len:    unix.SizeofSockaddrInet4,
+			Len:	unix.SizeofSockaddrInet4,
 			Family: unix.AF_INET,
 			Addr:   ip,
 		},
 		//ifra_dstaddr: unix.RawSockaddrInet4{
-		//	Len:    unix.SizeofSockaddrInet4,
+		//	Len:	unix.SizeofSockaddrInet4,
 		//	Family: unix.AF_INET,
 		//	Addr:   ip,
 		//},
 		ifra_mask: unix.RawSockaddrInet4{
-			Len:    unix.SizeofSockaddrInet4,
+			Len:	unix.SizeofSockaddrInet4,
 			Family: unix.AF_INET,
 			Addr:   netip.MustParseAddr(net.IP(net.CIDRMask(8, 32)).String()).As4(),
 		},
@@ -198,4 +198,41 @@ func (tun *TunAdapter) setupAddress(addr string) error {
 func ioctl(fd int, request int, argp uintptr) error {
 	_, _, errorp := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), uintptr(request), argp)
 	return errorp
+}
+
+func (tun *TunAdapter) setupV4Routes(link netlink.Link) error {
+	metric := tun.rwc.GetIPv4Metric()
+	for _, r := range tun.rwc.V4Routes() {
+		route := &netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Dst: &net.IPNet{
+				IP:   net.IP(r.Prefix.Addr().AsSlice()),
+				Mask: net.CIDRMask(r.Prefix.Bits(), 32),
+			},
+			Priority: metric, // macOS использует Priority как метрику
+		}
+		if err := netlink.RouteAdd(route); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+
+func (tun *TunAdapter) setupV6Routes(link netlink.Link) error {
+	metric := tun.rwc.GetIPv4Metric()
+	for _, r := range tun.rwc.V6Routes() {
+		route := &netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Dst: &net.IPNet{
+				IP:   net.IP(r.Prefix.Addr().AsSlice()),
+				Mask: net.CIDRMask(r.Prefix.Bits(), 128),
+			},
+			Priority: metric, // macOS использует Priority как метрику
+		}
+		if err := netlink.RouteAdd(route); err != nil {
+			return err
+		}
+	}
+	return nil
 }
