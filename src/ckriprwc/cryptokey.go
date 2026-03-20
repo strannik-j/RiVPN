@@ -32,7 +32,27 @@ type route struct {
 	destination ed25519.PublicKey
 }
 
-// Configure the CKR routes. This should only ever be ran by the TUN/TAP actor.
+// addRoutes adds all configured remote subnets. Must be called when peers are available.
+func (c *cryptokey) addRoutes() error {
+	c.Lock()
+	c.v4Routes = make([]*route, 0, len(c.config.IPv4RemoteSubnets))
+	c.v6Routes = make([]*route, 0, len(c.config.IPv6RemoteSubnets))
+	c.Unlock()
+	for ipv6, pubkey := range c.config.IPv6RemoteSubnets {
+		if err := c.addRemoteSubnet(ipv6, pubkey); err != nil {
+			return fmt.Errorf("Error adding routed IPv6 subnet: %w", err)
+		}
+	}
+	for ipv4, pubkey := range c.config.IPv4RemoteSubnets {
+		if err := c.addRemoteSubnet(ipv4, pubkey); err != nil {
+			return fmt.Errorf("Error adding routed IPv4 subnet: %w", err)
+		}
+	}
+	return nil
+}
+
+// Configure the CKR routes. If peers are not yet available, starts a background
+// goroutine that retries until peers appear.
 func (c *cryptokey) configure() error {
 	// Set enabled/disabled state
 	c.setEnabled(c.config.Enable)
@@ -40,32 +60,25 @@ func (c *cryptokey) configure() error {
 		return nil
 	}
 
-	c.Lock()
-	c.v4Routes = make([]*route, 0, len(c.config.IPv4RemoteSubnets))
-	c.v6Routes = make([]*route, 0, len(c.config.IPv6RemoteSubnets))
-	c.Unlock()
-	i := 0
-	for {
-		if len(c.core.GetPeers()) > 0 {
-			for ipv6, pubkey := range c.config.IPv6RemoteSubnets {
-				if err := c.addRemoteSubnet(ipv6, pubkey); err != nil {
-					return fmt.Errorf("Error adding routed IPv6 subnet: %w", err)
-				}
-			}
-			for ipv4, pubkey := range c.config.IPv4RemoteSubnets {
-				if err := c.addRemoteSubnet(ipv4, pubkey); err != nil {
-					return fmt.Errorf("Error adding routed IPv4 subnet: %w", err)
-				}
-			}
-			break
-		} else {
-			i++
-			if i > 10 {
-				return fmt.Errorf("No peers has been added")
-			}
-			time.Sleep(6 * time.Second)
-		}
+	if len(c.core.GetPeers()) > 0 {
+		return c.addRoutes()
 	}
+
+	// Peers not available yet — retry in background
+	go func() {
+		for {
+			time.Sleep(10 * time.Second)
+			if len(c.core.GetPeers()) > 0 {
+				if err := c.addRoutes(); err != nil {
+					c.log.Errorln("CKR: error adding routes:", err)
+				} else {
+					c.log.Infoln("CKR: routes configured successfully after waiting for peers")
+				}
+				return
+			}
+		}
+	}()
+	c.log.Infoln("CKR: no peers yet, will configure routes in background")
 	return nil
 }
 
